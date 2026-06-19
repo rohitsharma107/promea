@@ -1,0 +1,8 @@
+Machine,Date,Time,Calibration_ID,Parameter,A_SEG,B_SEG,DIFF,SLOPE,Status
+Prochem PA-100+,13/06/2026,10:58:23,67,Na,66.2,44.3,21.9,71.4,Daily clean done successfully
+Prochem PA-100+,13/06/2026,10:58:23,67,K,93.0,69.0,23.9,82.3,Daily clean done successfully
+Prochem PA-100+,13/06/2026,10:58:23,67,iCa,91.5,106.9,15.4,50.0,Daily clean done successfully
+Prochem PA-100+,13/06/2026,10:58:23,67,Cl,85.6,107.0,21.3,61.1,Daily clean done successfully
+
+
+
