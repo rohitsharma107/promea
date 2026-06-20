@@ -1,7 +1,7 @@
 import serial
 from datetime import datetime
 
-ser = serial.Serial("COM3", 9600, timeout=1)
+ser = serial.Serial("COM5", 9600, timeout=1)
 
 file = open("machine_output.log", "a")
 
