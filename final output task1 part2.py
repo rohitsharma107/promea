@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import io
+import re
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -153,26 +154,62 @@ if uploaded_file is not None:
     try:
         file_name = uploaded_file.name.lower()
 
-        # Clean processing for any tabular file format
+        # 1. Adaptively ingest raw data based on file extensions
         if file_name.endswith(".xlsx"):
             raw_data = pd.read_excel(uploaded_file)
+        elif file_name.endswith(".txt") or file_name.endswith(".log"):
+            bytes_data = uploaded_file.read()
+            text_data = bytes_data.decode("utf-8", errors="ignore")
+            lines = text_data.splitlines()
+            
+            # Identify if it is a comma-delimited structure with predefined text headers
+            if lines and "," in lines[0] and "Parameter" in lines[0]:
+                uploaded_file.seek(0)
+                raw_data = pd.read_csv(uploaded_file)
+            else:
+                raw_data = pd.DataFrame({"Machine_Data": lines})
         else:
             raw_data = pd.read_csv(uploaded_file)
 
-        raw_data.columns = [col.strip() for col in raw_data.columns]
+        # Standardize and trim whitespace from parsed columns
+        raw_data.columns = [str(col).strip() for col in raw_data.columns]
+
+        # --- SMART ADAPTIVE TRANSFORMATION LAYER ---
+        # Checks if file matches unstructured string streams (e.g. rohit.csv containing raw string cells)
+        if "Parameter" not in raw_data.columns or ("SLOPE" not in raw_data.columns and "Machine_Data" in raw_data.columns):
+            parsed_rows = []
+            cols_to_scan = ["Machine_Data"] if "Machine_Data" in raw_data.columns else raw_data.columns
+            
+            for col in cols_to_scan:
+                for val in raw_data[col].dropna():
+                    # Parse using regex matching pattern blocks containing key-value configurations like !Na=136.36#
+                    match = re.search(r'!([^=]+)=([^#]+)#', str(val))
+                    if match:
+                        param_key = match.group(1).strip()
+                        # Ignore system identifiers that are not physical measurement parameters
+                        if "ID" not in param_key.upper():
+                            parsed_rows.append({
+                                "Parameter": param_key,
+                                "SLOPE": match.group(2).strip()
+                            })
+            if parsed_rows:
+                raw_data = pd.DataFrame(parsed_rows)
+
+        # Sync and format column signatures
+        raw_data.columns = [str(col).strip() for col in raw_data.columns]
 
         if "Parameter" in raw_data.columns and "SLOPE" in raw_data.columns:
             
             # --- MEDICAL DATA MAPS (UNITS & REFERENCE RANGES) ---
             reference_map = {
-                "na": {"name": "Sodium", "unit": "mmol/L", "range": "135-150"},
-                "sodium": {"name": "Sodium", "unit": "mmol/L", "range": "135-150"},
-                "k": {"name": "Potassium", "unit": "mmol/L", "range": "3.5-5.1"},
-                "potassium": {"name": "Potassium", "unit": "mmol/L", "range": "3.5-5.1"},
-                "cl": {"name": "Chloride", "unit": "mmol/L", "range": "94-110"},
-                "chloride": {"name": "Chloride", "unit": "mmol/L", "range": "94-110"},
-                "ica": {"name": "Ionized Calcium", "unit": "mmol/L", "range": "1.15-1.35"},
-                "calcium": {"name": "Ionized Calcium", "unit": "mmol/L", "range": "1.15-1.35"}
+                "na": {"name": "Sodium", "unit": "mmol/L", "range": "130-145"},
+                "sodium": {"name": "Sodium", "unit": "mmol/L", "range": "130-145"},
+                "k": {"name": "Potassium", "unit": "mmol/L", "range": "3.44-4.55"},
+                "potassium": {"name": "Potassium", "unit": "mmol/L", "range": "3.44-4.55"},
+                "cl": {"name": "Chloride", "unit": "mmol/L", "range": "92-112"},
+                "chloride": {"name": "Chloride", "unit": "mmol/L", "range": "92-112"},
+                "ica": {"name": "Ionized Calcium", "unit": "mmol/L", "range": "1.00-1.35"},
+                "calcium": {"name": "Ionized Calcium", "unit": "mmol/L", "range": "1.00-1.35"}
             }
 
             filtered_df = raw_data[["Parameter", "SLOPE"]].copy()
@@ -236,7 +273,7 @@ if uploaded_file is not None:
             )
             
         else:
-            st.error("Error parsing file structure: 'Parameter' or 'SLOPE' columns missing from the uploaded file.")
+            st.error("Error parsing file structure: 'Parameter' or 'SLOPE' data format could not be processed from the file layout.")
     except Exception as e:
         st.error(f"Execution Error processing file: {e}")
 else:
