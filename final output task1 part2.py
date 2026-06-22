@@ -278,3 +278,4 @@ if uploaded_file is not None:
         st.error(f"Execution Error processing file: {e}")
 else:
     st.info("Awaiting machine data file upload to display the complete report panel.")
+#
