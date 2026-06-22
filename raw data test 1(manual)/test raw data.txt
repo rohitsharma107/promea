@@ -1,9 +1,0 @@
-Parameters,value,unit
-
-Na,24,mg
-
-Ho,15,mg
-
-Temp,37,c
-
-Ph,7.2,ph
